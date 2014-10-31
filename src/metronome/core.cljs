@@ -6,8 +6,7 @@
 
 (enable-console-print!)
 
-(def app-state (atom {:text "Hello world!"
-                      :bpm  {:bpm nil}}))
+(def app-state (atom {:bpm  {:bpm nil}}))
 
 (defn clock [bpm owner]
   (letfn [(clear-interval [] (let [id (om/get-state owner :interval)] (when-not (nil? id) (js/clearInterval id))))
@@ -64,12 +63,13 @@
     (init-state [_] {:previous-click nil})
     om/IRenderState
     (render-state [_ {:keys [click-channel previous-click]}]
-                  (dom/button #js {:onClick (fn []
+                  (dom/button #js {:className "btn btn-default btn-lg btn-block btn-tap-tempo"
+                                   :onClick (fn []
                                               (let [m (millis)]
                                                 (om/set-state! owner :previous-click m)
                                                 (when-not (nil? previous-click)
                                                   (put! click-channel (- m previous-click)))))}
-                              "Tap Tempo"))))
+                              "tap tempo"))))
 
 (om/root
  (fn [app owner]
@@ -81,7 +81,7 @@
      (render-state
       [_ {:keys [sound-channel click-channel]}]
       (dom/div nil
-               (dom/h1 nil (:text app))
+               (dom/h1 nil "metronome")
                (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :click-channel click-channel}})
                (om/build sound nil {:init-state {:sound-channel sound-channel}})
                (om/build click nil {:init-state {:click-channel click-channel}}))
