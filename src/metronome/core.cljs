@@ -45,9 +45,15 @@
     (did-mount [_]
                (let [sound-channel (om/get-state owner :sound-channel)]
                  (go (loop []
-                       (and (<! sound-channel) (.play (if (zero? (mod (om/get-state owner :beat) 4)) (om/get-node owner "ding") (om/get-node owner "dong"))))
-                       (om/update-state! owner :beat inc)
-                       (recur)))))
+                       (let [_     (<! sound-channel)
+                             audio (if (zero? (mod (om/get-state owner :beat) 4))
+                                     (om/get-node owner "ding")
+                                     (om/get-node owner "dong"))]
+                         (if (.-paused audio)
+                           (.play audio)
+                           (set! (.-currentTime audio) 0))
+                         (om/update-state! owner :beat inc)
+                         (recur))))))
     om/IRender
     (render [_]
             (dom/div nil
