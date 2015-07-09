@@ -9,30 +9,33 @@
 (def app-state (atom {:bpm  {:bpm nil}}))
 
 (defn clock [bpm owner]
-  (letfn [(clear-interval [] (let [id (om/get-state owner :interval)] (when-not (nil? id) (js/clearInterval id))))
-          (start-interval [millis]
-                          (let [sound-channel (om/get-state owner :sound-channel)]
-                            (om/update! bpm :bpm millis)
-                            (put! sound-channel true)
-                            (om/set-state! owner :interval (js/setInterval  #(put! sound-channel true) millis))))]
+  (letfn [(start-interval [millis] 
+            (om/set-state! owner :interval millis)
+            (om/set-state! owner :next-beat nil))]
     (reify
       om/IInitState
       (init-state [_] {:interval nil})
 
       om/IDidMount
       (did-mount [_]
-                 (clear-interval)
+                 (.requestAnimationFrame 
+                   js/window 
+                   (fn cb [t] 
+                     (let [interval (om/get-state owner :interval)]
+                       (when interval
+                         (let [next-beat (om/get-state owner :next-beat)
+                               do-beat   (or (nil? next-beat) (> t next-beat))]
+                           (when do-beat
+                             (put! (om/get-state owner :sound-channel) true)
+                             (om/set-state! owner :next-beat (+ t interval))))))
+                     (.requestAnimationFrame js/window cb)))
                  (let [interval-millis (:get bpm)
                        click-channel   (om/get-state owner :click-channel)]
                    (when-not (nil? interval-millis) (start-interval interval-millis))
                    (go (loop []
                          (let [new-interval-millis (<! click-channel)]
-                           (clear-interval)
                            (start-interval new-interval-millis)
                            (recur))))))
-
-      om/IWillUnmount
-      (will-unmount [_] (clear-interval))
 
       om/IRender
       (render [_] (dom/span nil)))))
@@ -61,7 +64,7 @@
                      (dom/audio #js {:ref "dong" :src "dong.ogg" :type "audio/ogg" :codecs="vorbis" :autobuffer true})))))
 
 
-(defn millis [] (.getTime (js/Date.)))
+(defn millis [] (.now js/performance))
 
 (defn click [_ owner]
   (reify
