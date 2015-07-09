@@ -1,6 +1,6 @@
 # metronome
 
-a web metronome that does not suck
+a web metronome that at least tries to suck less than others
 
 ## License
 
