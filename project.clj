@@ -1,13 +1,13 @@
-(defproject metronome "0.1.0-SNAPSHOT"
-  :description "FIXME: write this!"
-  :url "http://example.com/FIXME"
+(defproject metronome "0.1.1-SNAPSHOT"
+  :description "a web metronome that at least tries to suck less than others"
+  :url "https://h4ssi.github.io/metronome"
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/clojurescript "0.0-2311"]
-                 [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
-                 [om "0.7.1"]]
+  :dependencies [[org.clojure/clojure "1.7.0"]
+                 [org.clojure/clojurescript "0.0-3308"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.omcljs/om "0.9.0"]]
 
-  :plugins [[lein-cljsbuild "1.0.4-SNAPSHOT"]]
+  :plugins [[lein-cljsbuild "1.0.6"]]
 
   :source-paths ["src"]
 
@@ -17,5 +17,5 @@
               :compiler {
                 :output-to "metronome.js"
                 :output-dir "out"
-                :optimizations :none
-                :source-map true}}]})
+                :optimizations :simple
+                :source-map "metronome.js.map"}}]})
