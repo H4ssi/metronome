@@ -4,9 +4,11 @@
             [cljs.core.async :refer [put! chan <!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
-(enable-console-print!)
+(defonce app-setup
+  (do
+    (enable-console-print!)))
 
-(def app-state (atom {:bpm  {:bpm nil}}))
+(defonce app-state (atom {:bpm  {:bpm nil}}))
 
 (defn clock [bpm owner]
   (letfn [(start-interval [millis] 
