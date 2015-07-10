@@ -6,11 +6,11 @@ SHA=$(git rev-parse HEAD)
 git reset --mixed gh-pages
 git rm -r --cached .
 rm -f .gitignore
+cp resources/public/. .
 git add *.html
-sed 's/Light Table begin -->//; s/<!-- Light Table end//;' -i index.html
-git add out
-git add *.js
-git add *.ogg
+git add js/out
+git add js/*.js
+git add media/*.ogg
 git commit -m "deployed $SHA"
 git checkout -f gh-pages
 git merge --ff gh-deploy

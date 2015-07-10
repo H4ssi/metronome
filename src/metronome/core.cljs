@@ -60,8 +60,8 @@
     om/IRender
     (render [_]
             (dom/div nil
-                     (dom/audio #js {:ref "ding" :src "ding.ogg" :type "audio/ogg" :codecs="vorbis" :autobuffer true})
-                     (dom/audio #js {:ref "dong" :src "dong.ogg" :type "audio/ogg" :codecs="vorbis" :autobuffer true})))))
+                     (dom/audio #js {:ref "ding" :src "media/ding.ogg" :type "audio/ogg" :codecs="vorbis" :autobuffer true})
+                     (dom/audio #js {:ref "dong" :src "media/dong.ogg" :type "audio/ogg" :codecs="vorbis" :autobuffer true})))))
 
 
 (defn millis [] (.now js/performance))
