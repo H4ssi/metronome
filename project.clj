@@ -17,6 +17,8 @@
               :source-paths ["src"]
               :figwheel true
               :compiler {
+                :main metronome.core
+                :asset-path "js/out"
                 :output-to "resources/public/js/metronome.js"
                 :output-dir "resources/public/js/out"
                 :optimizations :none
