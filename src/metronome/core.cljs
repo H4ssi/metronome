@@ -8,7 +8,8 @@
   (do
     (enable-console-print!)))
 
-(defonce app-state (atom {:bpm {}}))
+(defonce app-state (atom {:bpm {} 
+                          :meter {:count 0}}))
 
 (defn clock [bpm owner]
   (letfn [(start-interval [millis] 
@@ -41,22 +42,20 @@
       om/IRender
       (render [_] (dom/span nil)))))
 
-(defn sound [_ owner]
+(defn sound [meter owner]
   (reify
-    om/IInitState
-    (init-state [_] {:beat 0})
     om/IDidMount
     (did-mount [_]
                (let [sound-channel (om/get-state owner :sound-channel)]
                  (go (loop []
                        (let [_     (<! sound-channel)
-                             audio (if (zero? (mod (om/get-state owner :beat) 4))
+                             audio (if (zero? (:count @meter))
                                      (om/get-node owner "ding")
                                      (om/get-node owner "dong"))]
                          (if (.-paused audio)
                            (.play audio)
                            (set! (.-currentTime audio) 0))
-                         (om/update-state! owner :beat inc)
+                         (om/transact! meter :count #(mod (inc %) 4))
                          (recur))))))
     om/IRender
     (render [_]
@@ -93,7 +92,7 @@
       (dom/div nil
                (dom/h1 nil "metronome")
                (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :click-channel click-channel}})
-               (om/build sound nil {:init-state {:sound-channel sound-channel}})
+               (om/build sound (:meter app) {:init-state {:sound-channel sound-channel}})
                (om/build click nil {:init-state {:click-channel click-channel}}))
       )))
  app-state
