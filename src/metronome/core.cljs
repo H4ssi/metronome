@@ -44,19 +44,32 @@
 
 (defn sound [meter owner]
   (reify
+    om/IInitState
+    (init-state [_] {:hidden true
+                     :cb (fn [] (om/set-state! owner :hidden (.-hidden js/document)))})
+
     om/IDidMount
     (did-mount [_]
-               (let [sound-channel (om/get-state owner :sound-channel)]
+               (let [cb            (om/get-state owner :cb)
+                     sound-channel (om/get-state owner :sound-channel)]
+                 (cb)
+                 (.addEventListener js/document "visibilitychange" cb)
                  (go (loop []
                        (let [_     (<! sound-channel)
                              audio (if (zero? (:count @meter))
                                      (om/get-node owner "ding")
                                      (om/get-node owner "dong"))]
-                         (if (.-paused audio)
+                         (if (and 
+                               (.-paused audio) 
+                               (not (om/get-state owner :hidden)))
                            (.play audio)
                            (set! (.-currentTime audio) 0))
                          (om/transact! meter :count #(mod (inc %) 4))
                          (recur))))))
+
+    om/IWillUnmount
+    (will-unmount [_] (.removeEventListener js/document "visibilitychange" (om/get-state owner :cb)))
+
     om/IRender
     (render [_]
             (dom/div nil
