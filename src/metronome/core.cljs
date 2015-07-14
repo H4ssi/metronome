@@ -93,6 +93,21 @@
                                                   (put! click-channel (- m previous-click)))))}
                               "tap tempo"))))
 
+(defn dots [meter owner]
+  (reify
+    om/IRender
+    (render [_] 
+      (let [dot (fn [pos]
+                  (dom/div #js {:className "col-xs-3"}
+                           (dom/span #js {:className (str "glyphicon glyphicon-record " pos (if (= (:count meter) pos) 
+                                                                                         "" 
+                                                                                         " hidden"))})))]
+        (dom/div #js {:className "row"} 
+                 (dot 1) ; sound is not done on render loop, thus the strange order here
+                 (dot 2)
+                 (dot 3)
+                 (dot 0))))))
+
 (om/root
  (fn [app owner]
    (reify
@@ -106,7 +121,8 @@
                (dom/h1 nil "metronome")
                (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :click-channel click-channel}})
                (om/build sound (:meter app) {:init-state {:sound-channel sound-channel}})
-               (om/build click nil {:init-state {:click-channel click-channel}}))
+               (om/build click nil {:init-state {:click-channel click-channel}})
+               (om/build dots (:meter app)))
       )))
  app-state
  {:target (. js/document (getElementById "app"))})
