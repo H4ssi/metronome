@@ -9,7 +9,8 @@
     (enable-console-print!)))
 
 (defonce app-state (atom {:bpm {} 
-                          :meter {:count 0}}))
+                          :meter {:count 0}
+                          :should-stop false}))
 
 (defn clock [bpm owner]
   (letfn [(start-interval [millis] 
@@ -79,7 +80,7 @@
 
 (defn millis [] (.now js/performance))
 
-(defn click [_ owner]
+(defn click [app owner]
   (reify
     om/IInitState
     (init-state [_] {:previous-click nil})
@@ -91,7 +92,7 @@
                                                 (om/set-state! owner :previous-click m)
                                                 (when-not (nil? previous-click)
                                                   (put! click-channel (- m previous-click)))))}
-                              "tap tempo"))))
+                              (if (:should-stop app) "stop" "tap tempo")))))
 
 (defn dots [meter owner]
   (reify
@@ -108,6 +109,17 @@
                  (dot 3)
                  (dot 0))))))
 
+(defn keylistener [app owner]
+  (reify
+    om/IDidMount
+    (did-mount [_]
+      (let [f (fn [e] (when (= "Shift" (.-key e)) (om/update! app :should-stop (= "keydown" (.-type e)))))]
+        (.addEventListener js/document "keydown" f)
+        (.addEventListener js/document "keyup" f)))
+
+    om/IRender
+    (render [_] (dom/div nil))))
+
 (om/root
  (fn [app owner]
    (reify
@@ -121,8 +133,9 @@
                (dom/h1 nil "metronome")
                (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :click-channel click-channel}})
                (om/build sound (:meter app) {:init-state {:sound-channel sound-channel}})
-               (om/build click nil {:init-state {:click-channel click-channel}})
-               (om/build dots (:meter app)))
+               (om/build click app {:init-state {:click-channel click-channel}})
+               (om/build dots (:meter app))
+               (om/build keylistener app))
       )))
  app-state
  {:target (. js/document (getElementById "app"))})
