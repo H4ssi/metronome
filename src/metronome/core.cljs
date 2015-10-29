@@ -15,7 +15,10 @@
 (defn clock [bpm owner]
   (letfn [(start-interval [millis] 
             (om/update! bpm :interval millis)
-            (om/update! bpm :next-beat nil))]
+            (om/update! bpm :next-beat nil))
+          (stop-interval []
+            (.log js/console "lol")
+            (om/update! bpm :interval nil))]
     (reify
       om/IInitState
       (init-state [_] {:mounted false})
@@ -36,7 +39,9 @@
                  (let [click-channel (om/get-state owner :click-channel)]
                    (go (loop []
                          (let [new-interval-millis (<! click-channel)]
-                           (start-interval new-interval-millis)
+                           (if (false? new-interval-millis)
+                             (stop-interval)
+                             (start-interval new-interval-millis))
                            (recur))))))
       om/IWillUnmount
       (will-unmount [_] (om/set-state! owner :mounted false))
@@ -91,7 +96,7 @@
                                               (let [m (millis)]
                                                 (om/set-state! owner :previous-click m)
                                                 (when-not (nil? previous-click)
-                                                  (put! click-channel (- m previous-click)))))}
+                                                  (put! click-channel (if (:should-stop app) false (- m previous-click))))))}
                               (if (:should-stop app) "stop" "tap tempo")))))
 
 (defn dots [meter owner]
