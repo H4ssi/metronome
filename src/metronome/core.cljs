@@ -5,19 +5,18 @@
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defonce app-setup
+
   (do
     (enable-console-print!)))
 
 (defonce app-state (atom {:bpm {} 
-                          :meter {:count 0}
-                          :should-stop false}))
+                          :meter {:count 0}}))
 
 (defn clock [bpm owner]
   (letfn [(start-interval [millis] 
             (om/update! bpm :interval millis)
             (om/update! bpm :next-beat nil))
           (stop-interval []
-            (.log js/console "lol")
             (om/update! bpm :interval nil))]
     (reify
       om/IInitState
@@ -36,9 +35,9 @@
                              (om/update! bpm :next-beat (+ t interval))))))
                      (when (om/get-state owner :mounted)
                        (.requestAnimationFrame js/window cb))))
-                 (let [click-channel (om/get-state owner :click-channel)]
+                 (let [tempo-channel (om/get-state owner :tempo-channel)]
                    (go (loop []
-                         (let [new-interval-millis (<! click-channel)]
+                         (let [new-interval-millis (<! tempo-channel)]
                            (if (false? new-interval-millis)
                              (stop-interval)
                              (start-interval new-interval-millis))
@@ -85,19 +84,25 @@
 
 (defn millis [] (.now js/performance))
 
-(defn click [app owner]
+(defn tap-tempo-button [_ owner]
   (reify
     om/IInitState
-    (init-state [_] {:previous-click nil})
+    (init-state [_] {:previous-click nil
+                     :should-stop false})
+    om/IDidMount
+    (did-mount [_]
+      (letfn [(key-handler [e] (when (= "Shift" (.-key e)) (om/set-state! owner :should-stop (= "keydown" (.-type e)))))]
+        (.addEventListener js/document "keydown" key-handler)
+        (.addEventListener js/document "keyup" key-handler)))
     om/IRenderState
-    (render-state [_ {:keys [click-channel previous-click]}]
+    (render-state [_ {:keys [tempo-channel previous-click should-stop]}]
                   (dom/button #js {:className "btn btn-default btn-lg btn-block btn-tap-tempo"
                                    :onClick (fn []
                                               (let [m (millis)]
                                                 (om/set-state! owner :previous-click m)
                                                 (when-not (nil? previous-click)
-                                                  (put! click-channel (if (:should-stop app) false (- m previous-click))))))}
-                              (if (:should-stop app) "stop" "tap tempo")))))
+                                                  (put! tempo-channel (if should-stop false (- m previous-click))))))}
+                              (if should-stop "stop" "tap tempo")))))
 
 (defn dots [meter owner]
   (reify
@@ -114,33 +119,20 @@
                  (dot 3)
                  (dot 0))))))
 
-(defn keylistener [app owner]
-  (reify
-    om/IDidMount
-    (did-mount [_]
-      (let [f (fn [e] (when (= "Shift" (.-key e)) (om/update! app :should-stop (= "keydown" (.-type e)))))]
-        (.addEventListener js/document "keydown" f)
-        (.addEventListener js/document "keyup" f)))
-
-    om/IRender
-    (render [_] (dom/div nil))))
-
 (om/root
  (fn [app owner]
    (reify
      om/IInitState
      (init-state [_] {:sound-channel (chan)
-                      :click-channel (chan)})
+                      :tempo-channel (chan)})
      om/IRenderState
      (render-state
-      [_ {:keys [sound-channel click-channel]}]
+      [_ {:keys [sound-channel tempo-channel]}]
       (dom/div nil
                (dom/h1 nil "metronome")
-               (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :click-channel click-channel}})
+               (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :tempo-channel tempo-channel}})
                (om/build sound (:meter app) {:init-state {:sound-channel sound-channel}})
-               (om/build click app {:init-state {:click-channel click-channel}})
-               (om/build dots (:meter app))
-               (om/build keylistener app))
-      )))
+               (om/build tap-tempo-button nil {:init-state {:tempo-channel tempo-channel}})
+               (om/build dots (:meter app))))))
  app-state
  {:target (. js/document (getElementById "app"))})
