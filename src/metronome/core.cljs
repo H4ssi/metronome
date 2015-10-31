@@ -5,7 +5,6 @@
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 (defonce app-setup
-
   (do
     (enable-console-print!)))
 
@@ -88,6 +87,7 @@
   (reify
     om/IInitState
     (init-state [_] {:previous-click nil
+                     :previous-interval nil
                      :should-stop false})
     om/IDidMount
     (did-mount [_]
@@ -95,13 +95,21 @@
         (.addEventListener js/document "keydown" key-handler)
         (.addEventListener js/document "keyup" key-handler)))
     om/IRenderState
-    (render-state [_ {:keys [tempo-channel previous-click should-stop]}]
+    (render-state [_ {:keys [tempo-channel should-stop]}]
                   (dom/button #js {:className "btn btn-default btn-lg btn-block btn-tap-tempo"
                                    :onClick (fn []
                                               (let [m (millis)]
-                                                (om/set-state! owner :previous-click m)
-                                                (when-not (nil? previous-click)
-                                                  (put! tempo-channel (if should-stop false (- m previous-click))))))}
+                                                (when-let [previous-click (om/get-state owner :previous-click)]
+                                                  (let [interval (- m previous-click)
+                                                        previous-interval (om/get-state owner :previous-interval)]
+                                                    (when (or
+                                                            (nil? previous-interval)
+                                                            (and
+                                                              (> interval (* 0.8 previous-interval))
+                                                              (< interval (* 1.2 previous-interval))))
+                                                      (put! tempo-channel (if (om/get-state owner :should-stop) false interval)))
+                                                    (om/set-state! owner :previous-interval interval)))
+                                                (om/set-state! owner :previous-click m)))}
                               (if should-stop "stop" "tap tempo")))))
 
 (defn dots [meter owner]
