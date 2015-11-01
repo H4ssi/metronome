@@ -98,18 +98,23 @@
     (render-state [_ {:keys [tempo-channel should-stop]}]
                   (dom/button #js {:className "btn btn-default btn-lg btn-block btn-tap-tempo"
                                    :onClick (fn []
-                                              (let [m (millis)]
-                                                (when-let [previous-click (om/get-state owner :previous-click)]
-                                                  (let [interval (- m previous-click)
-                                                        previous-interval (om/get-state owner :previous-interval)]
-                                                    (when (or
-                                                            (nil? previous-interval)
-                                                            (and
-                                                              (> interval (* 0.8 previous-interval))
-                                                              (< interval (* 1.2 previous-interval))))
-                                                      (put! tempo-channel (if (om/get-state owner :should-stop) false interval)))
-                                                    (om/set-state! owner :previous-interval interval)))
-                                                (om/set-state! owner :previous-click m)))}
+                                              (if (om/get-state owner :should-stop)
+                                                (do
+                                                  (om/set-state! owner :previous-click nil)
+                                                  (om/set-state! owner :previous-interval nil)
+                                                  (put! tempo-channel false))
+                                                (let [m (millis)]
+                                                  (when-let [previous-click (om/get-state owner :previous-click)]
+                                                    (let [interval (- m previous-click)
+                                                          previous-interval (om/get-state owner :previous-interval)]
+                                                      (when (or
+                                                              (nil? previous-interval)
+                                                              (and
+                                                                (> interval (* 0.8 previous-interval))
+                                                                (< interval (* 1.2 previous-interval))))
+                                                        (put! tempo-channel interval))
+                                                      (om/set-state! owner :previous-interval interval)))
+                                                  (om/set-state! owner :previous-click m))))}
                               (if should-stop "stop" "tap tempo")))))
 
 (defn dots [meter owner]
