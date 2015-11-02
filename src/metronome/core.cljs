@@ -87,7 +87,7 @@
   (reify
     om/IInitState
     (init-state [_] {:previous-click nil
-                     :previous-interval nil
+                     :previous-intervals nil
                      :should-stop false})
     om/IDidMount
     (did-mount [_]
@@ -101,19 +101,21 @@
                                               (if (om/get-state owner :should-stop)
                                                 (do
                                                   (om/set-state! owner :previous-click nil)
-                                                  (om/set-state! owner :previous-interval nil)
+                                                  (om/set-state! owner :previous-intervals nil)
                                                   (put! tempo-channel false))
                                                 (let [m (millis)]
                                                   (when-let [previous-click (om/get-state owner :previous-click)]
                                                     (let [interval (- m previous-click)
-                                                          previous-interval (om/get-state owner :previous-interval)]
-                                                      (when (or
+                                                          previous-intervals (om/get-state owner :previous-intervals)
+                                                          previous-interval (first previous-intervals)]
+                                                      (if (or
                                                               (nil? previous-interval)
                                                               (and
                                                                 (> interval (* 0.8 previous-interval))
                                                                 (< interval (* 1.2 previous-interval))))
-                                                        (put! tempo-channel interval))
-                                                      (om/set-state! owner :previous-interval interval)))
+                                                        (put! tempo-channel (/ (reduce + interval previous-intervals) (inc (count previous-intervals))))
+                                                        (om/set-state! owner :previous-intervals nil))
+                                                      (om/update-state! owner :previous-intervals #(conj % interval))))
                                                   (om/set-state! owner :previous-click m))))}
                               (if should-stop "stop" "tap tempo")))))
 
