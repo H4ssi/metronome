@@ -88,36 +88,62 @@
     om/IInitState
     (init-state [_] {:previous-click nil
                      :previous-intervals nil
-                     :should-stop false})
+                     :should-stop false
+                     :adjusting-timeout nil
+                     :adjusting false})
     om/IDidMount
     (did-mount [_]
       (letfn [(key-handler [e] (when (= "Shift" (.-key e)) (om/set-state! owner :should-stop (= "keydown" (.-type e)))))]
         (.addEventListener js/document "keydown" key-handler)
         (.addEventListener js/document "keyup" key-handler)))
     om/IRenderState
-    (render-state [_ {:keys [tempo-channel should-stop]}]
+    (render-state [_ {:keys [tempo-channel should-stop adjusting]}]
                   (dom/button #js {:className "btn btn-default btn-lg btn-block btn-tap-tempo"
                                    :onClick (fn []
-                                              (if (om/get-state owner :should-stop)
-                                                (do
-                                                  (om/set-state! owner :previous-click nil)
-                                                  (om/set-state! owner :previous-intervals nil)
-                                                  (put! tempo-channel false))
-                                                (let [m (millis)]
-                                                  (when-let [previous-click (om/get-state owner :previous-click)]
-                                                    (let [interval (- m previous-click)
-                                                          previous-intervals (om/get-state owner :previous-intervals)
-                                                          previous-interval (first previous-intervals)]
-                                                      (if (or
-                                                              (nil? previous-interval)
-                                                              (and
-                                                                (> interval (* 0.8 previous-interval))
-                                                                (< interval (* 1.2 previous-interval))))
-                                                        (put! tempo-channel (/ (reduce + interval previous-intervals) (inc (count previous-intervals))))
-                                                        (om/set-state! owner :previous-intervals nil))
-                                                      (om/update-state! owner :previous-intervals #(conj % interval))))
-                                                  (om/set-state! owner :previous-click m))))}
-                              (if should-stop "stop" "tap tempo")))))
+                                              (let [clear-adjusting-timeout (fn [] (when-let [t (om/get-state owner :adjusting-timeout)]
+                                                                                     (.clearInterval js/window t)
+                                                                                     (om/set-state! owner :adjusting-timeout nil)))
+                                                    start-adjusting (fn [] (clear-adjusting-timeout)
+                                                                           (om/set-state! owner :adjusting true))
+                                                    stop-adjusting (fn [] (clear-adjusting-timeout)
+                                                                          (om/set-state! owner :adjusting false))
+                                                    reset-intervals (fn [] (om/set-state! owner :previous-intervals nil)
+                                                                           (om/set-state! owner :previous-click nil))]
+                                                (if (om/get-state owner :should-stop)
+                                                  (do
+                                                    (reset-intervals)
+                                                    (stop-adjusting)
+                                                    (put! tempo-channel false))
+                                                  (let [m (millis)]
+                                                    (start-adjusting)
+                                                    (when-let [previous-click (om/get-state owner :previous-click)]
+                                                      (let [interval (- m previous-click)
+                                                            previous-intervals (om/get-state owner :previous-intervals)
+                                                            previous-interval (first previous-intervals)
+                                                            new-interval (fn [] 
+                                                                           (clear-adjusting-timeout)
+                                                                           (om/update-state! owner :previous-intervals #(conj % interval))
+                                                                           (let [avg (/ (reduce + interval previous-intervals) (inc (count previous-intervals)))
+                                                                                 t (.setTimeout js/window (fn []
+                                                                                                            (reset-intervals)
+                                                                                                            (stop-adjusting)) (* interval 1.2))]
+                                                                             (put! tempo-channel avg)
+                                                                             (om/set-state! owner :adjusting-timeout t)))]
+                                                        (cond
+                                                          (nil? previous-interval)
+                                                          (new-interval)
+  
+                                                          (> interval (* 0.8 previous-interval))
+                                                          (new-interval)
+  
+                                                          :else
+                                                          (do
+                                                            (reset-intervals)
+                                                            (clear-adjusting-timeout)))))
+                                                    (om/set-state! owner :previous-click m)))))}
+                              (str
+                                (if should-stop "stop" "tap tempo")
+                                (if adjusting " [...]" ""))))))
 
 (defn dots [meter owner]
   (reify
