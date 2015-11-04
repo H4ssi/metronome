@@ -93,7 +93,7 @@
                      :adjusting false})
     om/IDidMount
     (did-mount [_]
-      (letfn [(key-handler [e] (when (= "Shift" (.-key e)) (om/set-state! owner :should-stop (= "keydown" (.-type e)))))]
+      (letfn [(key-handler [e] (when (or (= "Shift" (.-key e)) (= 16 (.-keyCode e))) (om/set-state! owner :should-stop (= "keydown" (.-type e)))))]
         (.addEventListener js/document "keydown" key-handler)
         (.addEventListener js/document "keyup" key-handler)))
     om/IRenderState
