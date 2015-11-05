@@ -160,6 +160,12 @@
                  (dot 3)
                  (dot 0))))))
 
+(defn bpm [bpm owner]
+  (reify
+    om/IRender
+    (render [_]
+      (dom/div nil (str (.round js/Math (* 60 (/ 1000 (:interval bpm)))) " bpm")))))
+
 (om/root
  (fn [app owner]
    (reify
@@ -174,6 +180,7 @@
                (om/build clock (:bpm app) {:init-state {:sound-channel sound-channel :tempo-channel tempo-channel}})
                (om/build sound (:meter app) {:init-state {:sound-channel sound-channel}})
                (om/build tap-tempo-button nil {:init-state {:tempo-channel tempo-channel}})
-               (om/build dots (:meter app))))))
+               (om/build dots (:meter app))
+               (om/build bpm (:bpm app))))))
  app-state
  {:target (. js/document (getElementById "app"))})
