@@ -120,26 +120,22 @@
                                                       (let [interval (- m previous-click)
                                                             previous-intervals (om/get-state owner :previous-intervals)
                                                             previous-interval (first previous-intervals)
-                                                            new-interval (fn [] 
+                                                            avg-interval (fn [intervals]
                                                                            (clear-adjusting-timeout)
-                                                                           (om/update-state! owner :previous-intervals #(conj % interval))
-                                                                           (let [avg (/ (reduce + interval previous-intervals) (inc (count previous-intervals)))
+                                                                           (om/set-state! owner :previous-intervals intervals)
+                                                                           (let [avg (/ (reduce + intervals) (count intervals))
                                                                                  t (.setTimeout js/window (fn []
                                                                                                             (reset-intervals)
                                                                                                             (stop-adjusting)) (* interval 1.2))]
                                                                              (put! tempo-channel avg)
                                                                              (om/set-state! owner :adjusting-timeout t)))]
-                                                        (cond
-                                                          (nil? previous-interval)
-                                                          (new-interval)
-  
-                                                          (> interval (* 0.8 previous-interval))
-                                                          (new-interval)
-  
-                                                          :else
-                                                          (do
-                                                            (reset-intervals)
-                                                            (clear-adjusting-timeout)))))
+
+                                                        (avg-interval
+                                                          (if (or
+                                                                (nil? previous-interval)
+                                                                (< interval (* 0.8 previous-interval)))
+                                                            (list interval) ; start anew
+                                                            (conj previous-intervals interval))))) ; avg 
                                                     (om/set-state! owner :previous-click m)))))}
                               (str
                                 (if should-stop "stop" "tap tempo")
