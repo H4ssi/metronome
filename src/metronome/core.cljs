@@ -28,10 +28,13 @@
                    (fn cb [t] 
                      (let [{:keys [interval next-beat]} @bpm]
                        (when interval
-                         (let [do-beat   (or (nil? next-beat) (> t next-beat))]
+                         (let [do-beat      (or (nil? next-beat) (> t next-beat))
+                               beat-skipped (and next-beat (> t (+ next-beat interval)))]
                            (when do-beat
                              (put! (om/get-state owner :sound-channel) true)
-                             (om/update! bpm :next-beat (+ t interval))))))
+                             (om/update! bpm :next-beat (+ t interval)))
+                           (when beat-skipped
+                             (om/update! bpm :beat-skipped true)))))
                      (when (om/get-state owner :mounted)
                        (.requestAnimationFrame js/window cb))))
                  (let [tempo-channel (om/get-state owner :tempo-channel)]
@@ -162,6 +165,24 @@
     (render [_]
       (dom/div nil (str (.round js/Math (* 60 (/ 1000 (:interval bpm)))) " bpm")))))
 
+(defn skip-warning [bpm owner]
+  (reify
+    om/IInitState
+    (init-state [_] {:show false}) ; TODO
+    om/IRenderState
+    (render-state [_ {:keys [show]}]
+      (when (:beat-skipped bpm)
+        (dom/div #js {:className "alert alert-warning"
+                      :role "alert"}
+                 (dom/button #js {:type "button"
+                                  :className "close"
+                                  :aria-label "Close"
+                                  :onClick #(om/update! bpm :beat-skipped false)}
+                             (dom/span #js {:aria-hidden "true"}
+                                       "\u00d7"))
+                 (dom/strong nil "Missing some beats? ")
+                 "It seems like some beats where skipped. Did you run this in a background tab? Try popping this tab out into a separate window instead.")))))
+
 (om/root
  (fn [app owner]
    (reify
@@ -177,6 +198,7 @@
                (om/build sound (:meter app) {:init-state {:sound-channel sound-channel}})
                (om/build tap-tempo-button nil {:init-state {:tempo-channel tempo-channel}})
                (om/build dots (:meter app))
-               (om/build bpm (:bpm app))))))
+               (om/build bpm (:bpm app))
+               (om/build skip-warning (:bpm app))))))
  app-state
  {:target (. js/document (getElementById "app"))})
