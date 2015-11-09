@@ -181,7 +181,11 @@
                              (dom/span #js {:aria-hidden "true"}
                                        "\u00d7"))
                  (dom/strong nil "Missing some beats? ")
-                 "It seems like some beats where skipped. Did you run this in a background tab? Try popping this tab out into a separate window instead.")))))
+                 "It seems like some beats where skipped. Did you run this in a background tab? Try popping this tab out into a "
+                 (dom/a #js {:href "#"
+                             :onClick #(.open js/window (-> js/window .-location .-href) "metronome" "width=280,height=280")}
+                        "separate window")
+                 " instead.")))))
 
 (om/root
  (fn [app owner]
@@ -202,3 +206,4 @@
                (om/build skip-warning (:bpm app))))))
  app-state
  {:target (. js/document (getElementById "app"))})
+x
