@@ -163,7 +163,7 @@
   (reify
     om/IRender
     (render [_]
-      (dom/div nil (str (.round js/Math (* 60 (/ 1000 (:interval bpm)))) " bpm")))))
+      (dom/div nil (when-let [interval (:interval bpm)] (str (.round js/Math (* 60 (/ 1000 interval))) " bpm"))))))
 
 (defn skip-warning [bpm owner]
   (reify
